@@ -1,0 +1,89 @@
+version: '3.8'
+
+networks:
+  coldchain-net:
+    driver: bridge
+
+volumes:
+  kafka-data:
+  timescaledb-data:
+  grafana-data:
+
+services:
+  # ==========================================
+  # 1. Apache Kafka (KRaft 모드)
+  # ==========================================
+  kafka:
+    image: apache/kafka:latest
+    container_name: coldchain-kafka
+    restart: unless-stopped
+    ports:
+      # 호스트(VM) 외부나 로컬 파이썬 스크립트가 붙을 포트
+      - "9092:9092"
+    environment:
+      # [Node & Role]
+      # 컨테이너가 실제 데이터(메시지)를 디스크에 쓰고, 컨슈머에게 전달하는 일꾼(Broker)과 어떤 브로커가 살아있는지 감시하는(Controller) 역할을 둘 다 수행
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+
+      # [KRaft Quorum & Controller]
+      # 투표권을 가진 컨트롤러 노드 목록 지정 (형식: {NODE_ID}@{HOST}:{PORT})
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      # [Network Listeners (핵심!)]
+      # - CONTROLLER: 내부 메타데이터 동기화 전용 (9093)
+      # - PLAINTEXT: 도커 내부 네트워크(컨슈머 컨테이너 등) 통신용 (29092)
+      # - EXTERNAL: VM 호스트 또는 외부 파이썬 스크립트 통신용 (9092)
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT'
+
+      # [Single-Node Cluster Optimization]
+      # 기본 복제본(Replication Factor) 요구량이 3개이므로, 단일 브로커에서는 1로 낮춰야 토픽 생성이 멈추지 않음
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - coldchain-net
+
+  # ==========================================
+  # 2. TimescaleDB (PostgreSQL 16 + PostGIS)
+  # ==========================================
+  timescaledb:
+    # -ha 태그 이미지에는 지리공간 연산용 PostGIS 확장이 기본 내장되어 있음
+    image: timescale/timescaledb-ha:pg16
+    container_name: coldchain-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: coldchain
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123!
+    volumes:
+      # 컨테이너가 내려가도 시계열 데이터가 유지되도록 볼륨 마운트
+      - timescaledb-data:/home/postgres/pgdata/data
+    networks:
+      - coldchain-net
+
+  # ==========================================
+  # 3. Grafana 관제 대시보드
+  # ==========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: coldchain-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - coldchain-net
