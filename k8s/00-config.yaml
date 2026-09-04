@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DB_HOST: "timescaledb-service"
+  DB_PORT: "5432"
+  DB_NAME: "coldchain_db"
+  DB_USER: "postgres"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+  KAFKA_TOPIC: "vehicle-telemetry"
+---
+apiVersion: v1
+kind: Secret
+metadata:apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DB_HOST: "timescaledb-service"
+  DB_PORT: "5432"
+  DB_NAME: "coldchain_db"
+  DB_USER: "postgres"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+  KAFKA_TOPIC: "vehicle-telemetry"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+type: Opaque
+stringData:
+  DB_PASSWORD: "password123!"
+  DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/1542044129704411137/ZJu0iV7rVjvTDuol83n0_NKPiOu5g_gW4KxoE_Bg2NRnUrisKaGB_QQl5UmICMvYzJb4/slack"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-script
+data:
+  init.sql: |
+    CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+    CREATE EXTENSION IF NOT EXISTS postgis CASCADE;
+
+    CREATE TABLE IF NOT EXISTS logistics_centers (
+        center_id   VARCHAR(20) PRIMARY KEY,
+        name        VARCHAR(100) NOT NULL,
+        contact     VARCHAR(50),
+        address     VARCHAR(200),
+        location    GEOGRAPHY(Point, 4326) NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_centers_location ON logistics_centers USING GIST (location);
+
+    CREATE TABLE IF NOT EXISTS vehicle_telemetry (
+        time         TIMESTAMPTZ NOT NULL,
+        vehicle_id   VARCHAR(50) NOT NULL,
+        vehicle_name VARCHAR(100),
+        temperature  NUMERIC(5, 2) NOT NULL,
+        humidity     NUMERIC(4, 1),
+        speed_kmh    INT,
+        latitude     DOUBLE PRECISION NOT NULL,
+        longitude    DOUBLE PRECISION NOT NULL,
+        location     GEOGRAPHY(Point, 4326)
+    );
+
+    SELECT create_hypertable('vehicle_telemetry', 'time', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_vehicle_time ON vehicle_telemetry (vehicle_id, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_location ON vehicle_telemetry USING GIST (location);
+
+    INSERT INTO logistics_centers (center_id, name, contact, address, location) VALUES
+    ('CENTER-01', '의정부 거점 물류센터', '031-800-1111', '경기도 의정부시 평화로', ST_SetSRID(ST_MakePoint(127.0456, 37.7381), 4326)),
+    ('CENTER-02', '고양/일산 콜드체인 센터', '031-900-2222', '경기도 고양시 일산서구', ST_SetSRID(ST_MakePoint(126.8320, 37.6584), 4326)),
+    ('CENTER-03', '동남권 복합물류단지(송파)', '02-400-3333', '서울특별시 송파구 장지동', ST_SetSRID(ST_MakePoint(127.1268, 37.4782), 4326))
+    ON CONFLICT (center_id) DO NOTHING;
+  name: app-secret
+type: Opaque
+stringData:
+  DB_PASSWORD: "password123!"
+  DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/1542044129704411137/ZJu0iV7rVjvTDuol83n0_NKPiOu5g_gW4KxoE_Bg2NRnUrisKaGB_QQl5UmICMvYzJb4/slack"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-script
+data:
+  init.sql: |
+    CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+    CREATE EXTENSION IF NOT EXISTS postgis CASCADE;
+
+    CREATE TABLE IF NOT EXISTS logistics_centers (
+        center_id   VARCHAR(20) PRIMARY KEY,
+        name        VARCHAR(100) NOT NULL,
+        contact     VARCHAR(50),
+        address     VARCHAR(200),
+        location    GEOGRAPHY(Point, 4326) NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_centers_location ON logistics_centers USING GIST (location);
+
+    CREATE TABLE IF NOT EXISTS vehicle_telemetry (
+        time         TIMESTAMPTZ NOT NULL,
+        vehicle_id   VARCHAR(50) NOT NULL,
+        vehicle_name VARCHAR(100),
+        temperature  NUMERIC(5, 2) NOT NULL,
+        humidity     NUMERIC(4, 1),
+        speed_kmh    INT,
+        latitude     DOUBLE PRECISION NOT NULL,
+        longitude    DOUBLE PRECISION NOT NULL,
+        location     GEOGRAPHY(Point, 4326)
+    );
+
+    SELECT create_hypertable('vehicle_telemetry', 'time', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_vehicle_time ON vehicle_telemetry (vehicle_id, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_location ON vehicle_telemetry USING GIST (location);
+
+    INSERT INTO logistics_centers (center_id, name, contact, address, location) VALUES
+    ('CENTER-01', '의정부 거점 물류센터', '031-800-1111', '경기도 의정부시 평화로', ST_SetSRID(ST_MakePoint(127.0456, 37.7381), 4326)),
+    ('CENTER-02', '고양/일산 콜드체인 센터', '031-900-2222', '경기도 고양시 일산서구', ST_SetSRID(ST_MakePoint(126.8320, 37.6584), 4326)),
+    ('CENTER-03', '동남권 복합물류단지(송파)', '02-400-3333', '서울특별시 송파구 장지동', ST_SetSRID(ST_MakePoint(127.1268, 37.4782), 4326))
+    ON CONFLICT (center_id) DO NOTHING;

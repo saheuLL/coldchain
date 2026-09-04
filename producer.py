@@ -1,6 +1,7 @@
 import json
 import time
 import random
+import os
 from datetime import datetime, timezone
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
@@ -51,10 +52,12 @@ VEHICLES = [
 # ==========================================
 # 2. Kafka Producer 인스턴스 생성
 # ==========================================
+
+kafka_broker = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
 producer = KafkaProducer(
     # Docker Compose 외부(VM 로컬)에서 접속하므로 localhost:9092 사용
-    bootstrap_servers=['localhost:9092'],
-    
+    bootstrap_servers=[kafka_broker],
+    api_version=(2, 0, 2),
     # [직렬화]: 파이썬 딕셔너리 -> JSON 문자열 -> UTF-8 바이트 스트림 변환
     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
     
@@ -126,7 +129,7 @@ try:
                 value=payload
             )
             
-            # 전송 메타데이터 확인 (비동기 콜백 스타일)
+            # 전송 메타데이터 확인 (비동기 콜백 스타일) 카프카에 전송됐는지 확인증 10초 기다려 확인
             record_metadata = future.get(timeout=10)
             
             status_indicator = "🚨 [이상 감지]" if current_temp > -18.0 else "✅ [정상]"
@@ -135,7 +138,7 @@ try:
             # 다음 경로 좌표로 한 칸 이동
             v_state["step"] += 1
 
-        print("-" * 75)
+        print("-" * 50)
         # 1초 주기로 전송
         time.sleep(1)
 
@@ -145,4 +148,4 @@ finally:
     # 버퍼에 남아있는 모든 잔여 메시지 flush 후 안전하게 연결 종료
     producer.flush()
     producer.close()
-    print("[*] Producer 안전 종료 완료.")
+    print("[*] Producer 안전 종료 완료.")              

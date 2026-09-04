@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+# 표준 출력 버퍼링 비활성화 (K8s 로그 실시간 확인용)
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY producer.py .
+
+# 보안을 위한 비루트 사용자 설정
+RUN useradd -u 1000 appuser && chown -R appuser /app
+USER appuser
+
+ENTRYPOINT ["python", "producer.py"]

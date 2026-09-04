@@ -1,0 +1,21 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kafka-consumer-scaler
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: coldchain-consumer
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  cooldownPeriod: 30
+  pollingInterval: 10
+  triggers:
+  - type: kafka
+    metadata:
+      # KEDA 네임스페이스에서 default 네임스페이스의 카프카를 찾도록 FQDN 명시
+      bootstrapServers: kafka-service.default.svc.cluster.local:9092
+      consumerGroup: coldchain-consumer-group
+      topic: vehicle-telemetry
+      lagThreshold: "50"
+      offsetResetPolicy: earliest

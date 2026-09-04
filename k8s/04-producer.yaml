@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coldchain-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coldchain-producer
+  template:
+    metadata:
+      labels:
+        app: coldchain-producer
+    spec:
+      containers:
+      - name: producer
+        image: saheul/coldchain:producer-v2
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: app-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
