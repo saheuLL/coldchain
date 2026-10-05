@@ -8,7 +8,7 @@
 
 ## 🏛️ 시스템 아키텍쳐
 
-![Architecture](포폴에_올린_아키텍처_이미지_경로_또는_상대경로)
+![Architecture](https://app.notion.com/p/34ffdc154f30807bb4b7f0910ff35359?source=copy_link#3e9fdc154f308070b86ce45a1273b4ca)
 
 - **Message Streaming**: Apache Kafka (KRaft Mode, Multi-Partition)
 - **Container Orchestration**: Google Kubernetes Engine (GKE)
