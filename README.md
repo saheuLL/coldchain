@@ -6,7 +6,7 @@
 
 ---
 
-## 🏛️ System Architecture
+## 🏛️ 시스템 아키텍쳐
 
 ![Architecture](포폴에_올린_아키텍처_이미지_경로_또는_상대경로)
 
@@ -18,13 +18,12 @@
 
 ---
 
-## 📂 Project Structure
+## 📂 프로젝트 구조
 
 ```text
-├── k8s/                  # Kubernetes Manifests (Deployments, Services, ScaledObject)
-│   ├── kafka/            # Kafka Broker & Topic manifests
-│   ├── keda/             # KEDA ScaledObject & TriggerAuthentication
-│   └── apps/             # Producer & Consumer Deployment manifests
-├── consumer/             # Python Stream Consumer (TimescaleDB/PostGIS 적재 & Anomaly 감지)
-├── producer/             # IoT Sensor Data Simulator (Mock Telemetry Producer)
+├── k8s/                  # 쿠버네티스 매니패스트 (Deployments, Services)
+│   └── [00-05]-*.yaml             # Producer & Consumer Deployment manifests
+├── consumer.py           # 컨슈머 (TimescaleDB/PostGIS 적재 & 알림 전송)
+├── producer.py             # IoT 센서 데이터 시뮬레이터 (Mock Telemetry Producer)
+├── Dockerfile            # 컨슈머와 프로듀서 이미지 만들기 위한 도커파일
 └── README.md
